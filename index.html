@@ -3,13 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <title>Hoorain Cosmetics</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#000000">
+
 <style>
-body{font-family:Arial;margin:0;background:#fdecef}
-header{background:#c2185b;color:white;padding:15px;text-align:center}
-nav button{margin:5px;padding:10px}
-.card{background:white;margin:10px;padding:15px;border-radius:8px}
+body{margin:0;font-family:Arial;background:#f8d7e5;color:#000}
+header{background:#000;color:#ff69b4;padding:15px;text-align:center}
+button{padding:10px;margin:5px;background:#ff69b4;border:none;color:#000;font-weight:bold}
+input,select{padding:8px;margin:5px;width:90%}
+.card{background:#fff;margin:10px;padding:15px;border-radius:10px}
 .hidden{display:none}
-input,button{padding:8px;margin:5px}
+nav button{width:30%}
+.low{color:red;font-weight:bold}
+.hot{color:green;font-weight:bold}
 </style>
 </head>
 
@@ -17,15 +23,15 @@ input,button{padding:8px;margin:5px}
 
 <header>
 <h2>Hoorain Cosmetics</h2>
-<div id="topPhone">📞 0303-4141011</div>
+<p>📞 0303-4141011</p>
 </header>
 
 <!-- LOGIN -->
-<div id="loginPage" class="card">
+<div id="login" class="card">
 <h3>Enter PIN</h3>
-<input type="password" id="pin" placeholder="1234">
+<input type="password" id="pin">
 <button onclick="login()">Login</button>
-<p id="loginErr" style="color:red"></p>
+<p id="err" style="color:red"></p>
 </div>
 
 <!-- APP -->
@@ -40,114 +46,125 @@ input,button{padding:8px;margin:5px}
 
 <!-- DASHBOARD -->
 <div id="dash" class="card">
-<h3>Dashboard</h3>
 <p>Today Sale: Rs <span id="todaySale">0</span></p>
 <p>Monthly Sale: Rs <span id="monthSale">0</span></p>
 <p>Total Products: <span id="totalProd">0</span></p>
-<p>Low Stock (≤5): <span id="lowStock">0</span></p>
+<p>Low Stock: <span id="lowStock">0</span></p>
 </div>
 
 <!-- PRODUCTS -->
 <div id="prod" class="card hidden">
 <h3>Add Product</h3>
-<input id="pname" placeholder="Product name">
-<input id="pqty" type="number" placeholder="Qty">
+<input id="pname" placeholder="Name">
+<input id="pprice" type="number" placeholder="Price">
+<input id="pstock" type="number" placeholder="Stock">
 <button onclick="addProduct()">Add</button>
-<ul id="prodList"></ul>
+<div id="plist"></div>
 </div>
 
 <!-- SALES -->
 <div id="sale" class="card hidden">
 <h3>Add Sale</h3>
-<input id="samt" type="number" placeholder="Amount">
-<button onclick="addSale()">Add Sale</button>
+<select id="saleProd"></select>
+<input id="saleQty" type="number" placeholder="Qty">
+<button onclick="sell()">Sell</button>
 </div>
 
 </div>
 
 <script>
-/* LOGIN */
-function login(){
- if(document.getElementById("pin").value==="1234"){
-  localStorage.setItem("login","yes");
-  init();
- }else{
-  document.getElementById("loginErr").innerText="Wrong PIN";
- }
+// ===== PWA =====
+if ('serviceWorker' in navigator) {
+ const sw = `
+ self.addEventListener('fetch', e=>e.respondWith(fetch(e.request)));
+ `;
+ const blob = new Blob([sw],{type:'text/javascript'});
+ navigator.serviceWorker.register(URL.createObjectURL(blob));
 }
 
-function logout(){
- localStorage.removeItem("login");
- location.reload();
-}
-
-/* INIT */
-function init(){
- document.getElementById("loginPage").style.display="none";
- document.getElementById("app").classList.remove("hidden");
- show("dash");
- refresh();
-}
-
-if(localStorage.getItem("login")==="yes") init();
-
-/* NAV */
-function show(id){
- ["dash","prod","sale"].forEach(x=>{
-  document.getElementById(x).classList.add("hidden");
- });
- document.getElementById(id).classList.remove("hidden");
-}
-
-/* DATA */
+// ===== DATA =====
 let products = JSON.parse(localStorage.getItem("products")||"[]");
 let sales = JSON.parse(localStorage.getItem("sales")||"[]");
 
-/* PRODUCTS */
+// ===== LOGIN =====
+function login(){
+ if(pin.value==="1234"){
+  localStorage.setItem("login","1");
+  init();
+ } else err.innerText="Wrong PIN";
+}
+function logout(){
+ localStorage.clear();
+ location.reload();
+}
+if(localStorage.getItem("login")) init();
+
+function init(){
+ login.style.display="none";
+ app.classList.remove("hidden");
+ show("dash");
+ render();
+}
+
+// ===== NAV =====
+function show(id){
+ ["dash","prod","sale"].forEach(x=>document.getElementById(x).classList.add("hidden"));
+ document.getElementById(id).classList.remove("hidden");
+}
+
+// ===== PRODUCTS =====
 function addProduct(){
  products.push({
   name:pname.value,
-  qty:Number(pqty.value)
+  price:+pprice.value,
+  stock:+pstock.value
  });
- localStorage.setItem("products",JSON.stringify(products));
- pname.value="";pqty.value="";
- refresh();
+ save();
+ pname.value=pprice.value=pstock.value="";
+ render();
 }
 
-/* SALES */
-function addSale(){
- sales.push({
-  amt:Number(samt.value),
-  date:new Date().toISOString()
- });
- localStorage.setItem("sales",JSON.stringify(sales));
- samt.value="";
- refresh();
+// ===== SALES =====
+function sell(){
+ let i=saleProd.value;
+ let q=+saleQty.value;
+ if(products[i].stock>=q){
+  products[i].stock-=q;
+  sales.push({amt:products[i].price*q,date:new Date()});
+  save();
+  saleQty.value="";
+  render();
+ }
 }
 
-/* DASHBOARD */
-function refresh(){
- let today=new Date().toDateString();
- let month=new Date().getMonth();
+// ===== RENDER =====
+function render(){
+ plist.innerHTML="";
+ saleProd.innerHTML="";
+ let low=0, today=0, month=0;
+ let now=new Date();
 
- let tSale=0,mSale=0;
+ products.forEach((p,i)=>{
+  if(p.stock<=5) low++;
+  plist.innerHTML+=`<p>${p.name} | Rs ${p.price} | Stock ${p.stock}</p>`;
+  saleProd.innerHTML+=`<option value="${i}">${p.name}</option>`;
+ });
+
  sales.forEach(s=>{
   let d=new Date(s.date);
-  if(d.toDateString()===today) tSale+=s.amt;
-  if(d.getMonth()===month) mSale+=s.amt;
+  if(d.toDateString()===now.toDateString()) today+=s.amt;
+  if(d.getMonth()===now.getMonth()) month+=s.amt;
  });
 
- todaySale.innerText=tSale;
- monthSale.innerText=mSale;
+ todaySale.innerText=today;
+ monthSale.innerText=month;
  totalProd.innerText=products.length;
- lowStock.innerText=products.filter(p=>p.qty<=5).length;
+ lowStock.innerText=low;
+}
 
- prodList.innerHTML="";
- products.forEach(p=>{
-  let li=document.createElement("li");
-  li.innerText=p.name+" ("+p.qty+")";
-  prodList.appendChild(li);
- });
+function save(){
+ localStorage.setItem("products",JSON.stringify(products));
+ localStorage.setItem("sales",JSON.stringify(sales));
 }
 </script>
 
