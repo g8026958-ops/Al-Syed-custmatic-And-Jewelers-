@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Hoorain Cosmetics</title>
+<style>
+body{font-family:Arial;margin:0;background:#fdecef}
+header{background:#c2185b;color:white;padding:15px;text-align:center}
+nav button{margin:5px;padding:10px}
+.card{background:white;margin:10px;padding:15px;border-radius:8px}
+.hidden{display:none}
+input,button{padding:8px;margin:5px}
+</style>
+</head>
+
+<body>
+
+<header>
+<h2>Hoorain Cosmetics</h2>
+<div id="topPhone">📞 0303-4141011</div>
+</header>
+
+<!-- LOGIN -->
+<div id="loginPage" class="card">
+<h3>Enter PIN</h3>
+<input type="password" id="pin" placeholder="1234">
+<button onclick="login()">Login</button>
+<p id="loginErr" style="color:red"></p>
+</div>
+
+<!-- APP -->
+<div id="app" class="hidden">
+
+<nav>
+<button onclick="show('dash')">Dashboard</button>
+<button onclick="show('prod')">Products</button>
+<button onclick="show('sale')">Sales</button>
+<button onclick="logout()">Logout</button>
+</nav>
+
+<!-- DASHBOARD -->
+<div id="dash" class="card">
+<h3>Dashboard</h3>
+<p>Today Sale: Rs <span id="todaySale">0</span></p>
+<p>Monthly Sale: Rs <span id="monthSale">0</span></p>
+<p>Total Products: <span id="totalProd">0</span></p>
+<p>Low Stock (≤5): <span id="lowStock">0</span></p>
+</div>
+
+<!-- PRODUCTS -->
+<div id="prod" class="card hidden">
+<h3>Add Product</h3>
+<input id="pname" placeholder="Product name">
+<input id="pqty" type="number" placeholder="Qty">
+<button onclick="addProduct()">Add</button>
+<ul id="prodList"></ul>
+</div>
+
+<!-- SALES -->
+<div id="sale" class="card hidden">
+<h3>Add Sale</h3>
+<input id="samt" type="number" placeholder="Amount">
+<button onclick="addSale()">Add Sale</button>
+</div>
+
+</div>
+
+<script>
+/* LOGIN */
+function login(){
+ if(document.getElementById("pin").value==="1234"){
+  localStorage.setItem("login","yes");
+  init();
+ }else{
+  document.getElementById("loginErr").innerText="Wrong PIN";
+ }
+}
+
+function logout(){
+ localStorage.removeItem("login");
+ location.reload();
+}
+
+/* INIT */
+function init(){
+ document.getElementById("loginPage").style.display="none";
+ document.getElementById("app").classList.remove("hidden");
+ show("dash");
+ refresh();
+}
+
+if(localStorage.getItem("login")==="yes") init();
+
+/* NAV */
+function show(id){
+ ["dash","prod","sale"].forEach(x=>{
+  document.getElementById(x).classList.add("hidden");
+ });
+ document.getElementById(id).classList.remove("hidden");
+}
+
+/* DATA */
+let products = JSON.parse(localStorage.getItem("products")||"[]");
+let sales = JSON.parse(localStorage.getItem("sales")||"[]");
+
+/* PRODUCTS */
+function addProduct(){
+ products.push({
+  name:pname.value,
+  qty:Number(pqty.value)
+ });
+ localStorage.setItem("products",JSON.stringify(products));
+ pname.value="";pqty.value="";
+ refresh();
+}
+
+/* SALES */
+function addSale(){
+ sales.push({
+  amt:Number(samt.value),
+  date:new Date().toISOString()
+ });
+ localStorage.setItem("sales",JSON.stringify(sales));
+ samt.value="";
+ refresh();
+}
+
+/* DASHBOARD */
+function refresh(){
+ let today=new Date().toDateString();
+ let month=new Date().getMonth();
+
+ let tSale=0,mSale=0;
+ sales.forEach(s=>{
+  let d=new Date(s.date);
+  if(d.toDateString()===today) tSale+=s.amt;
+  if(d.getMonth()===month) mSale+=s.amt;
+ });
+
+ todaySale.innerText=tSale;
+ monthSale.innerText=mSale;
+ totalProd.innerText=products.length;
+ lowStock.innerText=products.filter(p=>p.qty<=5).length;
+
+ prodList.innerHTML="";
+ products.forEach(p=>{
+  let li=document.createElement("li");
+  li.innerText=p.name+" ("+p.qty+")";
+  prodList.appendChild(li);
+ });
+}
+</script>
+
+</body>
+</html>
